@@ -17,17 +17,14 @@ public class Tester {
 	public void test() {
 		images = Image.getTestImageList();
 		Scanner in = new Scanner(System.in);
-//		while(in.hasNextLine()) {
-//			browse();
-//			in.nextLine();
-//		}
+		while(in.hasNextLine()) {
+			browse();
+			in.nextLine();
+		}
 //		while(in.hasNextLine()) {
 //			getDrawing();
 //			in.nextLine();
 //		}
-		while(in.hasNextLine()) {
-			in.nextLine();
-		}
 	}
 
 	public int getGrayScale(int r, int g, int b) {

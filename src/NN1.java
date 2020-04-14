@@ -1,20 +1,13 @@
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Scanner;
 
-import javax.imageio.ImageIO;
-
-import com.sun.glass.ui.GestureSupport;
 
 public class NN1 {
 
