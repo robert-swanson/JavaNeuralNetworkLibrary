@@ -8,33 +8,30 @@ import javax.imageio.ImageIO;
 
 
 public class Tester {
-	LinkedList<Image> images;
+
+	static LinkedList<Image> images = Image.getTestImageList();
 
 	public static void main(String[] args) {
-		System.out.println("Press enter to move on");
-		Tester t = new Tester();
-		t.test();
-	}
-
-	// Runs manual test
-	public void test() {
-		images = Image.getTestImageList();
 		Scanner in = new Scanner(System.in);
-//		while(in.hasNextLine()) {
-//			browse();
-//			in.nextLine();
-//		}
-		String[] filenames = {"one.png", "two.png", "three.png", "four.png", "five.png", "six.png", "seven.png", "eight.png", "nine.png"};
-		for(String filename: filenames){
-			getDrawing(filename);
-			in.nextLine();
+
+		while(in.hasNextLine()){
+			System.out.println("Welcome to the NN CLI, type \"help\" to list commands");
+			String[] input = in.nextLine().split(" ");
+
 		}
 	}
 
-	// Converts an RGB pixel value to grayscale
-	public static int getGrayScale(int r, int g, int b) {
-		return 255-(int)(r * 0.299 + g * 0.587 + b * 0.114);
-	}
+	// Runs manual test
+//	public void test() {
+////		while(in.hasNextLine()) {
+////			browse();
+////			in.nextLine();
+////		}
+//		String[] filenames = {"one.png", "two.png", "three.png", "four.png", "five.png", "six.png", "seven.png", "eight.png", "nine.png"};
+//		for(String filename: filenames){
+//			getDrawing(filename);
+//		}
+//	}
 
 	// Overload Prints
 	public static void print(double[] a) {
@@ -65,12 +62,12 @@ public class Tester {
 			int j = 0;
 			int i = 0;
 			while(i < 3136) {
-				imageData[j] = getGrayScale(startPixels[i], startPixels[i+1], startPixels[i+2]);
+				imageData[j] = Image.getGrayScale(startPixels[i], startPixels[i+1], startPixels[i+2]);
 				//				System.out.printf("\n%3d",imageData[j]);
 				j++;
 				i+=4;
 				while(i%(112) != 0) {
-					imageData[j] = getGrayScale(startPixels[i], startPixels[i+1], startPixels[i+2]);
+					imageData[j] = Image.getGrayScale(startPixels[i], startPixels[i+1], startPixels[i+2]);
 					//					System.out.printf("%3d",imageData[j]);
 					i+=4;
 					j++;
@@ -123,7 +120,4 @@ public class Tester {
 			System.out.println();
 		}
 	}
-	
-	
-
 }

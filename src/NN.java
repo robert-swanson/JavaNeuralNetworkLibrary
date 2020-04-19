@@ -1,6 +1,5 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -31,6 +30,8 @@ public class NN {
 	// Training
 	private int trainingCursor;
 	private double bestAccuracy;
+
+	//  ================================================= Constructors =============================================
 
 	/**
 	 * Creates a random new neural network based off of the given structure
@@ -63,46 +64,14 @@ public class NN {
 		load("Current.txt");
 	}
 
-	// Creates a random double array with the given dimensions
-	private double[][] randArr(int h, int w){
-		double[][] rv = new double[h][w];
-		for(int i = 0; i < h; i++)
-			rv[i] = randArr(rv[i].length);
-		return rv;
-	}
-
-	// Creates a random double array with the given length
-	private double[] randArr(int len) {
-		double[] rv = new double[len];
-		for(int i = 0; i < rv.length; i++)
-			rv[i] = Math.random()*2-1;
-		return rv;
-	}
-
-	// Creates an empty 3D weight array with the given structure
-	private double[][][] emptyWArr(int[] struc){
-		double[][][] rv = new double[struc.length-1][][];
-		for(int i = 0; i < struc.length-1; i++) {
-			rv[i] = new double[struc[i+1]][struc[i]];
-		}
-		return rv;
-	}
-
-	// Creates an empty 2D bias array with the given structure
-	private double[][] emptyBArr(int[] struc){
-		double[][] rv = new double[struc.length-1][];
-		for(int i = 0; i < struc.length-1; i++) {
-			rv[i] = new double[struc[i+1]];
-		}
-		return rv;
-	}
+	//  ================================================= Classifying ==============================================
 
 	/**
 	 * Tests the neural network on the provided images
 	 * @param images a list of images to test on
 	 * @return a double[11] whose first value is the overall accuracy and whose following values arr[n] is equal to the accuracy of classifying the digit n-1
 	 */
-	public double[][] getStats(LinkedList<Image> images) {
+	public double[][] testWithImage(LinkedList<Image> images) {
 		int[] total = new int[10];
 		int successes = 0;
 		int t = images.size();
@@ -124,162 +93,35 @@ public class NN {
 	}
 
 	/**
-	 * Trains the neural network on the given data
-	 * @param data the list of images to train on
-	 * @param batchSize the number of images to include in each batch
-	 * @param learningRate the speed of the learning process
-	 */
-	public void train(LinkedList<Image> data, int batchSize, double learningRate) {
-		System.out.println("Data Size: "+data.size());
-		double seconds = getBackPropTime(data.getFirst())/1000.0;
-		System.out.println("Estimated Completion: "+getETA(seconds*batchSize, (int)Math.ceil((data.size()- trainingCursor)/batchSize)));
-		System.out.println("Estimated Total Time: "+(int)(data.size()*seconds)+"s");
-		long start = System.currentTimeMillis();
-		Image image;
-		for(int i = trainingCursor; i < data.size();) { //Iterates through each batch
-			long batchStart = System.currentTimeMillis();
-			int correct = 0;
-			image = data.get(i);
-			backPropigate(image.getInput(), image.getOutput());
-			double[][][] weightVector = dcdw;
-			double[][] biasVector = dcdb;
-			int batch = 1;
-			i++;
-			if(getGuess()==image.label) correct++;
-			for(;i%batchSize != 0 && i < data.size();i++) { //Iterates through each data set in the batch
-				image = data.get(i);
-				backPropigate(data.get(i).getInput(), data.get(i).getOutput());
-				//				printDiagnostic(image);
-				weightVector = sumMatrix(weightVector, dcdw);
-				biasVector = sumMatrix(biasVector, dcdb);
-				batch++;
-				if(getGuess()==image.label) correct++;
-			}
-			if(batch > 0) {
-				divideMatrix(weightVector, batch);
-				divideMatrix(biasVector, batch);
-				//Make changes from batch
-				multiplyMatrix(weightVector, learningRate*-1);
-				multiplyMatrix(biases, learningRate*-1);
-				weights = sumMatrix(weights, weightVector);
-				biases = sumMatrix(biases, biasVector);	
-//				System.out.printf("Batch #%d:\tAccuracy:%3.0f%%\t%2.2f%% Complete\t\tEst Complete: %s\n", i/batchSize, test(Image.getTestImageList())*100.0, (100.0*i)/data.size() ,getETA((System.currentTimeMillis()-batchStart)/1000.0, (int)Math.ceil((data.size()-i)/batchSize)));
-				double[][] results = getStats(Image.getTestImageList());
-				System.out.printf("Accuracy: %.3f%% ", results[0][0]*100);
-				for(int ii = 0; ii < 10; ii++) {
-					System.out.printf("%d:%.0f%% ",ii, results[1][ii]);
-				}
-				trainingCursor += batch;
-				save("Current.txt");
-				if(results[0][0] > bestAccuracy) {
-					bestAccuracy = results[0][0];
-					save("Best.txt");
-					System.out.println("New Best");
-				}else {
-					System.out.println();
-				}
-			}
-
-		}
-	}
-
-	// Calls `backPropigate` and returns the execution time
-	private int getBackPropTime(Image image) {
-		long start = System.currentTimeMillis();
-		backPropigate(image.getInput(), image.getOutput());
-		return (int)(System.currentTimeMillis()-start);
-	}
-
-	// Estimates the executio time for the remaining batches
-	private String getETA(double seconds, int batchesLeft) {
-		SimpleDateFormat format = new SimpleDateFormat("hh:mm aa, EEEE");
-		Calendar calender = GregorianCalendar.getInstance();
-		int secondsLeft =  (int)(batchesLeft * seconds);
-		calender.add(Calendar.SECOND, secondsLeft);
-		return format.format(calender.getTime());
-	}
-
-	// Performs a deep addition on the 2D arrays
-	private double[][] sumMatrix(double[][] a, double[][] b){
-		if(a.length != b.length) {
-			System.err.println("SUM MATRIX ERROR: Matracies not same shape");
-			return null;
-		}
-		for(int y = 0; y < a.length; y++) {
-			if(a[y].length != b[y].length) {
-				System.err.println("SUM MATRIX ERROR: Matracies not same shape");
-				return null;
-			}
-			for(int x = 0; x < a[y].length; x++) {
-				a[y][x] += b[y][x];
-			}
-		}
-		return a;
-	}
-
-	// Performs a deep addition on the 3D arrays
-	private double[][][] sumMatrix(double[][][] a, double[][][] b){
-		if(a.length != b.length) {
-			System.err.println("SUM MATRIX ERROR: Matracies not same shape");
-			return null;
-		}
-		for(int i = 0; i < a.length; i++) {
-			a[i] = sumMatrix(a[i], b[i]);
-		}
-		return a;
-	}
-
-	// Performs a scalar division on the 3D matrix
-	private void divideMatrix(double[][][] matrix, double c){
-		for(int x = 0; x < matrix.length; x++)
-			for(int y = 0; y < matrix[x].length; y++)
-				for(int z = 0; z < matrix[x][y].length; z++)
-					matrix[x][y][z] /= c;
-	}
-
-	// Performs a scalar division on the 2D matrix
-	private void divideMatrix(double[][] matrix, double c){
-		for(int x = 0; x < matrix.length; x++)
-			for(int y = 0; y < matrix[x].length; y++)
-				matrix[x][y] /= c;
-	}
-
-	// Performs scalar multiplication on the 2D matrix
-	private void multiplyMatrix(double[][] a, double c){
-		for(int j = 0; j < a.length; j++) {
-			for(int i = 0; i < a[j].length; i++)
-				a[j][i] *= c;
-		}
-	}
-
-	// Performs scalar multiplication on the 3D matrix
-	private void multiplyMatrix(double[][][] a, double c) {
-		for(double[][] daa: a)
-			multiplyMatrix(daa, c);
-	}
-
-	/**
 	 * Classifies the given image through forward propagation
 	 * @param image the image to classify
 	 * @return the classification of the image
 	 */
 	public int classify(Image image) {
 		updateInput(image.getInput());
-		propigateForward();
+		propagateForward();
 		return getGuess();
+	}
+
+	// Propagates forward through the neural network
+	private void propagateForward() {
+		activations[0] = sigmoid(sumProd(input, weights[0], biases[0]));
+		for(int layer = 1; layer < structure.length - 1; layer++) {
+			activations[layer] = sigmoid(sumProd(activations[layer-1], weights[layer], biases[layer]));
+		}
 	}
 
 	/**
 	 * Set the values for the input layer
  	 * @param input an array the same length as the input layer
 	 */
-	public void updateInput(double[] input) {
+	private void updateInput(double[] input) {
 		if(input.length != structure[0]) {
 			System.err.println("GET ACTIVATION ERROR: Input wrong shape");
 			return;
 		}
 		this.input = input;
-		propigateForward();
+		propagateForward();
 	}
 
 	/**
@@ -298,7 +140,7 @@ public class NN {
 	 * Retrieves the result of the classification
 	 * @return the integer value of the classification
 	 */
-	public int getGuess() {
+	private int getGuess() {
 		double biggest = 0;
 		int index = 0;
 		for(int i = 0; i < structure[structure.length-1]; i++) {
@@ -320,34 +162,94 @@ public class NN {
 		return cost;
 	}
 
-	// Propagates forward through the neural network
-	private void propigateForward() {
-		activations[0] = sigmoid(sumProd(input, weights[0], biases[0]));
-		for(int layer = 1; layer < structure.length - 1; layer++) {
-			activations[layer] = sigmoid(sumProd(activations[layer-1], weights[layer], biases[layer]));
+	//  ================================================= Training =================================================
+
+	/**
+	 * Trains the network on all of the training data one time
+	 */
+	public static void singleCompleteTrain() {
+		LinkedList<Image> images = Image.getTrainingImageList();
+		NN neuralNetwork = new NN();
+		neuralNetwork.trainingCursor = 0;
+		neuralNetwork.train(images, 100, .2);
+	}
+
+	/**
+	 * Trains the current network on all of the training data repeatedly
+	 */
+	public static void infiniteTrain() {
+		LinkedList<Image> images = Image.getTrainingImageList();
+		NN neuralNetwork = new NN();//new int[] {784,36,16,10} new int[] {784,100,60,40,10}
+		while(true) {
+			if(neuralNetwork.trainingCursor == images.size()) neuralNetwork.trainingCursor = 0;
+			neuralNetwork.train(images, 100, .2);
 		}
 	}
 
-	// Calculates the sum of the bias and the product of the weight and activation values for forward propagation
-	private double[] sumProd(double[] prevActivtions, double[][] weights, double[] biases) {
-		double[] rv = new double[weights.length];
-		if(prevActivtions.length != weights[0].length) {
-			System.err.println("SUMPROD ERROR: Matracies shapes don't match");
-			return rv;
-		}
-		for(int j = 0; j < weights.length; j++) {
-			rv[j] = biases[j];
-			for(int k = 0; k < weights[0].length; k++) {
-				rv[j] += prevActivtions[k]*weights[j][k];
+	/**
+	 * Trains the neural network on the given data
+	 * @param data the list of images to train on
+	 * @param batchSize the number of images to include in each batch
+	 * @param learningRate the speed of the learning process
+	 */
+	public void train(LinkedList<Image> data, int batchSize, double learningRate) {
+		System.out.println("Data Size: "+data.size());
+		double seconds = getBackPropTime(data.getFirst())/1000.0;
+		System.out.println("Estimated Completion: "+getETA(seconds*batchSize, (int)Math.ceil((data.size()- trainingCursor)/batchSize)));
+		System.out.println("Estimated Total Time: "+(int)(data.size()*seconds)+"s");
+		long start = System.currentTimeMillis();
+		Image image;
+		for(int i = trainingCursor; i < data.size();) { //Iterates through each batch
+			long batchStart = System.currentTimeMillis();
+			int correct = 0;
+			image = data.get(i);
+			backPropagate(image.getInput(), image.getOutput());
+			double[][][] weightVector = dcdw;
+			double[][] biasVector = dcdb;
+			int batch = 1;
+			i++;
+			if(getGuess()==image.label) correct++;
+			for(;i%batchSize != 0 && i < data.size();i++) { //Iterates through each data set in the batch
+				image = data.get(i);
+				backPropagate(data.get(i).getInput(), data.get(i).getOutput());
+				//				printDiagnostic(image);
+				weightVector = sumMatrix(weightVector, dcdw);
+				biasVector = sumMatrix(biasVector, dcdb);
+				batch++;
+				if(getGuess()==image.label) correct++;
 			}
+			if(batch > 0) {
+				divideMatrix(weightVector, batch);
+				divideMatrix(biasVector, batch);
+				//Make changes from batch
+				multiplyMatrix(weightVector, learningRate*-1);
+				multiplyMatrix(biases, learningRate*-1);
+				weights = sumMatrix(weights, weightVector);
+				biases = sumMatrix(biases, biasVector);
+//				System.out.printf("Batch #%d:\tAccuracy:%3.0f%%\t%2.2f%% Complete\t\tEst Complete: %s\n", i/batchSize, test(Image.getTestImageList())*100.0, (100.0*i)/data.size() ,getETA((System.currentTimeMillis()-batchStart)/1000.0, (int)Math.ceil((data.size()-i)/batchSize)));
+				double[][] results = testWithImage(Image.getTestImageList());
+				System.out.printf("Accuracy: %.3f%% ", results[0][0]*100);
+				for(int ii = 0; ii < 10; ii++) {
+					System.out.printf("%d:%.0f%% ",ii, results[1][ii]);
+				}
+				trainingCursor += batch;
+				save("Current.txt");
+				if(results[0][0] > bestAccuracy) {
+					bestAccuracy = results[0][0];
+					save("Best.txt");
+					System.out.println("New Best");
+				}else {
+					System.out.println();
+				}
+			}
+
 		}
-		return rv;
 	}
 
 	// Sets the input, propagates forward, then propagates backward
-	private void backPropigate(double[] data, double[] label) {
+	private void backPropagate(double[] data, double[] label) {
 		updateInput(data);
-		propigateForward();
+		propagateForward();
 		dcdw = emptyWArr(structure);
 		dcdb = emptyBArr(structure);
 		dcda = emptyBArr(structure);
@@ -361,94 +263,95 @@ public class NN {
 		}
 	}
 
-	// Calculates the derivative of the cost with respect to the specified weight
-	private double getDcDw(int l, int j, int k, double[] label) {
-		double dzdw = getActivation(l-1, k);
-		double a = getActivation(l, j);
-		double z = sigmoidInv(a);
-		double dadz = sigmoidP(z);
-		double dcda = getDcDa(l, j, label);
-		return dzdw * dadz * dcda;
+	// Calls `backPropigate` and returns the execution time
+	private int getBackPropTime(Image image) {
+		long start = System.currentTimeMillis();
+		backPropagate(image.getInput(), image.getOutput());
+		return (int)(System.currentTimeMillis()-start);
 	}
 
-	// Calculates the derivative of the cost with respect to the specified bias
-	private double getDcDb(int l, int j, double[] label) {
-		double a = getActivation(l, j);
-		double z = sigmoidInv(a);
-		double dadz = sigmoidP(z);
-		double dcda = getDcDa(l, j, label);
-		return dadz * dcda;
+	// Estimates the execution time for the remaining batches
+	private String getETA(double seconds, int batchesLeft) {
+		SimpleDateFormat format = new SimpleDateFormat("hh:mm aa, EEEE");
+		Calendar calender = GregorianCalendar.getInstance();
+		int secondsLeft =  (int)(batchesLeft * seconds);
+		calender.add(Calendar.SECOND, secondsLeft);
+		return format.format(calender.getTime());
 	}
 
-	// Calculates the derivative of the cost with respect to the specified activation
-	private double getDcDa(int l, int k, double[] label) {
-		double dcdak = 0.0;
-		if(l == structure.length - 2) {
-			dcdak = 2 * (getOutput()[k]-label[k]);
-		}else if(l == structure.length - 1) {
-			return 1;
-		}else {
-			for(int j = 0; j < structure[l+2]; j++) {
-				double dzdak = weights[l+1][j][k]; //<-- Error point
-				double a = getActivation(l+1, j);
-				double z = sigmoidInv(a);
-				double dadz = sigmoidP(z);
-				//				double dcda = getDcDa(l+1, j, label);
-				double dcda = this.dcda[l+1][j];
-				dcdak += dzdak * dadz * dcda;
+
+	//  ================================================= File Management ==========================================
+
+	/**
+	 * Saves the network parameters to file
+	 * @param file the filename to save to
+	 */
+	public void save(String file) {
+		PrintWriter print;
+		try {
+			print = new PrintWriter(file);
+			print.println(trainingCursor);
+			for(int i:structure) print.print(i+ " ");
+			print.println();
+			for(int x = 0; x < weights.length; x++)
+				for(int y = 0; y < weights[x].length; y++) {
+					for(int z = 0; z < weights[x][y].length; z++)
+						print.print(weights[x][y][z]+" ");
+					print.println();
+				}
+			for(int x = 0; x < biases.length; x++) {
+				for(int y = 0; y < biases[x].length; y++)
+					print.print(biases[x][y]+" ");
+				print.println();
 			}
+			print.flush();
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not save");
 		}
-		dcda[l][k] = dcdak;
-		return dcdak;
 	}
 
-	// Returns the activation at the specified location
-	private double getActivation(int l, int j) {
-		if(l >= structure.length || l < -1) {
-			System.err.println("GET ACTIVATION ERROR: Layer index out of bounds");
-			return 0.0;
+	// Loads a file and sets the network parameters accordingly
+	private void load(String file) {
+		try {
+			Scanner in = new Scanner(new File(file));	
+			trainingCursor = Integer.parseInt(in.nextLine());
+			structure = sti(in.nextLine().split(" "));
+			weights = new double[structure.length-1][][];
+			activations = new double[structure.length-1][];
+			for(int l = 0; l < structure.length-1; l++) {
+				weights[l] = new double[structure[l+1]][];
+				activations[l] = new double[structure[l+1]];
+				for(int j = 0; j < structure[l+1]; j++) {
+					weights[l][j] = std(in.nextLine().split(" "));
+				}
+			}
+			biases = new double[structure.length-1][];
+			for(int l = 0; l < structure.length-1; l++)
+				biases[l] = std(in.nextLine().split(" "));
+			in.close();
+		} catch (FileNotFoundException e) {
+			System.err.println("Saved File Not Found");
 		}
-		if(j >= structure[l+1] || j < 0) {
-			System.err.println("GET ACTIVATION ERROR: Node index out of bounds");
-			return 0.0;
-		}
-		if(input == null) {
-			System.err.println("GET ACTIVATION ERROR: No input");
-			return 0.0;
-		}
-		if(input.length != structure[0]) {
-			System.err.println("GET ACTIVATION ERROR: Input wrong shape");
-			return 0.0;
-		}
-		if(l == -1)
-			return input[j];
-		return activations[l][j];
+
 	}
 
-	// Calculates the sigmoid of the value
-	private double sigmoid(double x) {
-		return 1/(1+Math.exp(-x));
+	// string to int[]
+	private static int[] sti(String[] args) {
+		int[] ret = new int[args.length];
+		for (int i = 0; i < ret.length; i++)
+			ret[i] = Integer.parseInt(args[i]);
+		return ret;
 	}
 
-	// Calculates the sigmoid of each value in the array
-	private double[] sigmoid(double[] x) {
-		double[] rv = new double[x.length];
-		for(int i = 0; i < rv.length; i++) {
-			rv[i] = sigmoid(x[i]);
-		}
-		return rv;
+	// string to double[]
+	private static double[] std(String[] args) {
+		double[] ret = new double[args.length];
+		for (int i = 0; i < ret.length; i++)
+			ret[i] = Double.parseDouble(args[i]);
+		return ret;
 	}
 
-	// Calculates the derivative of the sigmoid function at x
-	private double sigmoidP(double x) {
-		double sig = sigmoid(x);
-		return sig*(1-sig);
-	}
-
-	// Calculates 1 / the sigmoid of x
-	private double sigmoidInv(double x) {
-		return Math.log(x/(1-x));
-	}
+	//  ================================================= Printing =================================================
 
 	// Prints the current state of the network
 	private void print() {
@@ -549,96 +452,203 @@ public class NN {
 		System.out.printf("%s\tCost: %.3f\tLabel: %d\t Guess: %d\n",(image.label == getGuess() ? "CORRECT" : "WRONG"),getCost(image.getOutput()), image.label, getGuess());
 	}
 
-	//File
+	//  ================================================= Math =====================================================
 
-	// Loads a file and sets the network parameters accordingly
-	private void load(String file) {
-		try {
-			Scanner in = new Scanner(new File(file));	
-			trainingCursor = Integer.parseInt(in.nextLine());
-			structure = sti(in.nextLine().split(" "));
-			weights = new double[structure.length-1][][];
-			activations = new double[structure.length-1][];
-			for(int l = 0; l < structure.length-1; l++) {
-				weights[l] = new double[structure[l+1]][];
-				activations[l] = new double[structure[l+1]];
-				for(int j = 0; j < structure[l+1]; j++) {
-					weights[l][j] = std(in.nextLine().split(" "));
-				}
+	// Calculates the sum of the bias and the product of the weight and activation values for forward propagation
+	private double[] sumProd(double[] prevActivtions, double[][] weights, double[] biases) {
+		double[] rv = new double[weights.length];
+		if(prevActivtions.length != weights[0].length) {
+			System.err.println("SUMPROD ERROR: Matracies shapes don't match");
+			return rv;
+		}
+		for(int j = 0; j < weights.length; j++) {
+			rv[j] = biases[j];
+			for(int k = 0; k < weights[0].length; k++) {
+				rv[j] += prevActivtions[k]*weights[j][k];
 			}
-			biases = new double[structure.length-1][];
-			for(int l = 0; l < structure.length-1; l++)
-				biases[l] = std(in.nextLine().split(" "));
-			in.close();
-		} catch (FileNotFoundException e) {
-			System.err.println("Saved File Not Found");
 		}
-
+		return rv;
 	}
 
-	// string to int[]
-	private static int[] sti(String[] args) {
-		int[] ret = new int[args.length];
-		for (int i = 0; i < ret.length; i++)
-			ret[i] = Integer.parseInt(args[i]);
-		return ret;
-	}
-
-	// string to double[]
-	private static double[] std(String[] args) {
-		double[] ret = new double[args.length];
-		for (int i = 0; i < ret.length; i++)
-			ret[i] = Double.parseDouble(args[i]);
-		return ret;
-	}
-
-	/**
-	 * Saves the network parameters to file
-	 * @param file the filename to save to
-	 */
-	public void save(String file) {
-		PrintWriter print;
-		try {
-			print = new PrintWriter(file);
-			print.println(trainingCursor);
-			for(int i:structure) print.print(i+ " ");
-			print.println();
-			for(int x = 0; x < weights.length; x++)
-				for(int y = 0; y < weights[x].length; y++) {
-					for(int z = 0; z < weights[x][y].length; z++)
-						print.print(weights[x][y][z]+" ");
-					print.println();
-				}
-			for(int x = 0; x < biases.length; x++) {
-				for(int y = 0; y < biases[x].length; y++)
-					print.print(biases[x][y]+" ");
-				print.println();
+	// Performs a deep addition on the 2D arrays
+	private double[][] sumMatrix(double[][] a, double[][] b){
+		if(a.length != b.length) {
+			System.err.println("SUM MATRIX ERROR: Matracies not same shape");
+			return null;
+		}
+		for(int y = 0; y < a.length; y++) {
+			if(a[y].length != b[y].length) {
+				System.err.println("SUM MATRIX ERROR: Matracies not same shape");
+				return null;
 			}
-			print.flush();
-		} catch (FileNotFoundException e) {
-			System.err.println("Could not save");
+			for(int x = 0; x < a[y].length; x++) {
+				a[y][x] += b[y][x];
+			}
+		}
+		return a;
+	}
+
+	// Performs a deep addition on the 3D arrays
+	private double[][][] sumMatrix(double[][][] a, double[][][] b){
+		if(a.length != b.length) {
+			System.err.println("SUM MATRIX ERROR: Matracies not same shape");
+			return null;
+		}
+		for(int i = 0; i < a.length; i++) {
+			a[i] = sumMatrix(a[i], b[i]);
+		}
+		return a;
+	}
+
+	// Performs a scalar division on the 3D matrix
+	private void divideMatrix(double[][][] matrix, double c){
+		for(int x = 0; x < matrix.length; x++)
+			for(int y = 0; y < matrix[x].length; y++)
+				for(int z = 0; z < matrix[x][y].length; z++)
+					matrix[x][y][z] /= c;
+	}
+
+	// Performs a scalar division on the 2D matrix
+	private void divideMatrix(double[][] matrix, double c){
+		for(int x = 0; x < matrix.length; x++)
+			for(int y = 0; y < matrix[x].length; y++)
+				matrix[x][y] /= c;
+	}
+
+	// Performs scalar multiplication on the 2D matrix
+	private void multiplyMatrix(double[][] a, double c){
+		for(int j = 0; j < a.length; j++) {
+			for(int i = 0; i < a[j].length; i++)
+				a[j][i] *= c;
 		}
 	}
 
-	/**
-	 * Trains the network on all of the training data one time
-	 */
-	public static void singleCompleteTrain() {
-		LinkedList<Image> images = Image.getTrainingImageList();
-		NN neuralNetwork = new NN();
-		neuralNetwork.trainingCursor = 0;
-		neuralNetwork.train(images, 100, .2);
+	// Performs scalar multiplication on the 3D matrix
+	private void multiplyMatrix(double[][][] a, double c) {
+		for(double[][] daa: a)
+			multiplyMatrix(daa, c);
 	}
 
-	/**
-	 * Trains the network on all of the training data repeatedly
-	 */
-	public static void infiniteTrain() {
-		LinkedList<Image> images = Image.getTrainingImageList();
-		NN neuralNetwork = new NN();//new int[] {784,36,16,10} new int[] {784,100,60,40,10}
-		while(true) {
-			if(neuralNetwork.trainingCursor == images.size()) neuralNetwork.trainingCursor = 0;
-			neuralNetwork.train(images, 100, .2);
+	// Calculates the derivative of the cost with respect to the specified weight
+	private double getDcDw(int l, int j, int k, double[] label) {
+		double dzdw = getActivation(l-1, k);
+		double a = getActivation(l, j);
+		double z = sigmoidInv(a);
+		double dadz = sigmoidP(z);
+		double dcda = getDcDa(l, j, label);
+		return dzdw * dadz * dcda;
+	}
+
+	// Calculates the derivative of the cost with respect to the specified bias
+	private double getDcDb(int l, int j, double[] label) {
+		double a = getActivation(l, j);
+		double z = sigmoidInv(a);
+		double dadz = sigmoidP(z);
+		double dcda = getDcDa(l, j, label);
+		return dadz * dcda;
+	}
+
+	// Calculates the derivative of the cost with respect to the specified activation
+	private double getDcDa(int l, int k, double[] label) {
+		double dcdak = 0.0;
+		if(l == structure.length - 2) {
+			dcdak = 2 * (getOutput()[k]-label[k]);
+		}else if(l == structure.length - 1) {
+			return 1;
+		}else {
+			for(int j = 0; j < structure[l+2]; j++) {
+				double dzdak = weights[l+1][j][k]; //<-- Error point
+				double a = getActivation(l+1, j);
+				double z = sigmoidInv(a);
+				double dadz = sigmoidP(z);
+				//				double dcda = getDcDa(l+1, j, label);
+				double dcda = this.dcda[l+1][j];
+				dcdak += dzdak * dadz * dcda;
+			}
 		}
+		dcda[l][k] = dcdak;
+		return dcdak;
+	}
+
+	// Returns the activation at the specified location
+	private double getActivation(int l, int j) {
+		if(l >= structure.length || l < -1) {
+			System.err.println("GET ACTIVATION ERROR: Layer index out of bounds");
+			return 0.0;
+		}
+		if(j >= structure[l+1] || j < 0) {
+			System.err.println("GET ACTIVATION ERROR: Node index out of bounds");
+			return 0.0;
+		}
+		if(input == null) {
+			System.err.println("GET ACTIVATION ERROR: No input");
+			return 0.0;
+		}
+		if(input.length != structure[0]) {
+			System.err.println("GET ACTIVATION ERROR: Input wrong shape");
+			return 0.0;
+		}
+		if(l == -1)
+			return input[j];
+		return activations[l][j];
+	}
+
+	// Calculates the sigmoid of the value
+	private double sigmoid(double x) {
+		return 1/(1+Math.exp(-x));
+	}
+
+	// Calculates the sigmoid of each value in the array
+	private double[] sigmoid(double[] x) {
+		double[] rv = new double[x.length];
+		for(int i = 0; i < rv.length; i++) {
+			rv[i] = sigmoid(x[i]);
+		}
+		return rv;
+	}
+
+	// Calculates the derivative of the sigmoid function at x
+	private double sigmoidP(double x) {
+		double sig = sigmoid(x);
+		return sig*(1-sig);
+	}
+
+	// Calculates 1 / the sigmoid of x
+	private double sigmoidInv(double x) {
+		return Math.log(x/(1-x));
+	}
+
+	// Creates a random double array with the given dimensions
+	private double[][] randArr(int h, int w){
+		double[][] rv = new double[h][w];
+		for(int i = 0; i < h; i++)
+			rv[i] = randArr(rv[i].length);
+		return rv;
+	}
+
+	// Creates a random double array with the given length
+	private double[] randArr(int len) {
+		double[] rv = new double[len];
+		for(int i = 0; i < rv.length; i++)
+			rv[i] = Math.random()*2-1;
+		return rv;
+	}
+
+	// Creates an empty 3D weight array with the given structure
+	private double[][][] emptyWArr(int[] struc){
+		double[][][] rv = new double[struc.length-1][][];
+		for(int i = 0; i < struc.length-1; i++) {
+			rv[i] = new double[struc[i+1]][struc[i]];
+		}
+		return rv;
+	}
+
+	// Creates an empty 2D bias array with the given structure
+	private double[][] emptyBArr(int[] struc){
+		double[][] rv = new double[struc.length-1][];
+		for(int i = 0; i < struc.length-1; i++) {
+			rv[i] = new double[struc[i+1]];
+		}
+		return rv;
 	}
 }

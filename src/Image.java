@@ -60,6 +60,17 @@ public class Image {
 	}
 
 	/**
+	 * Converts an RGB pixel value to grayscale
+	 * @param r Red value
+	 * @param g Green value
+	 * @param b Blue value
+	 * @return Greyscale value
+	 */
+	public static int getGrayScale(int r, int g, int b) {
+		return 255-(int)(r * 0.299 + g * 0.587 + b * 0.114);
+	}
+
+	/**
 	 * Gets the one dimensional data for the image
 	 * @return a double array containing the pixel values
 	 */
