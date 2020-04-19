@@ -1,3 +1,4 @@
+// Copied from https://github.com/jeffgriffith/mnist-reader
 
 import static java.lang.String.format;
 

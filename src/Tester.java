@@ -6,6 +6,7 @@ import java.util.Scanner;
 
 import javax.imageio.ImageIO;
 
+
 public class Tester {
 	LinkedList<Image> images;
 
@@ -14,6 +15,8 @@ public class Tester {
 		Tester t = new Tester();
 		t.test();
 	}
+
+	// Runs manual test
 	public void test() {
 		images = Image.getTestImageList();
 		Scanner in = new Scanner(System.in);
@@ -28,25 +31,30 @@ public class Tester {
 		}
 	}
 
-	public int getGrayScale(int r, int g, int b) {
+	// Converts an RGB pixel value to grayscale
+	public static int getGrayScale(int r, int g, int b) {
 		return 255-(int)(r * 0.299 + g * 0.587 + b * 0.114);
 	}
-	public void print(double[] a) {
-		System.out.print("[");
-		for (int i = 0; i < a.length - 1; i++)
-			System.out.print(a[i] + ", ");
-		System.out.println(a[a.length - 1] + "]");
-	}
-	public void print(int[] a) {
+
+	// Overload Prints
+	public static void print(double[] a) {
 		System.out.print("[");
 		for (int i = 0; i < a.length - 1; i++)
 			System.out.print(a[i] + ", ");
 		System.out.println(a[a.length - 1] + "]");
 	}
 
+	public static void print(int[] a) {
+		System.out.print("[");
+		for (int i = 0; i < a.length - 1; i++)
+			System.out.print(a[i] + ", ");
+		System.out.println(a[a.length - 1] + "]");
+	}
+
+	// Fetches and classifies the image with the given filename
 	public void getDrawing(String filename) {
 		BufferedImage img;
-		NN1 nn = new NN1();
+		NN nn = new NN();
 		try {
 			img = ImageIO.read(new File("assets/images/"+filename));
 			int width = img.getWidth();
@@ -93,8 +101,9 @@ public class Tester {
 
 	}
 
+	// Fetches and classifies a random image from the test data
 	public void browse() {
-		NN1 nn = new NN1();
+		NN nn = new NN();
 		Image image = images.get((int)(Math.random()*images.size()));
 		image.roughPrint();
 		System.out.printf("Real: %d Guess: %d\n",image.label,nn.classify(image));
