@@ -54,13 +54,13 @@ public class Image {
 	}
 	
 	public static LinkedList<Image> getTrainingImageList(){
-		int[] labels = MnistReader.getLabels("training labels");
+		int[] labels = MnistReader.getLabels("assets/dataset/training labels");
 		List<int[][]> imageData = MnistReader.getImages("training data");
 		return getImageList(labels, imageData);
 	}
 	public static LinkedList<Image> getTestImageList(){
-		int[] labels = MnistReader.getLabels("test labels");
-		List<int[][]> imageData = MnistReader.getImages("test data");
+		int[] labels = MnistReader.getLabels("assets/dataset/test labels");
+		List<int[][]> imageData = MnistReader.getImages("assets/dataset/test data");
 		return getImageList(labels, imageData);
 	}
 	private static LinkedList<Image> getImageList(int[] labels, List<int[][]> imageData){

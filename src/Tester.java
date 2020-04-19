@@ -17,14 +17,15 @@ public class Tester {
 	public void test() {
 		images = Image.getTestImageList();
 		Scanner in = new Scanner(System.in);
-		while(in.hasNextLine()) {
-			browse();
-			in.nextLine();
-		}
 //		while(in.hasNextLine()) {
-//			getDrawing();
+//			browse();
 //			in.nextLine();
 //		}
+		String[] filenames = {"one.png", "two.png", "three.png", "four.png", "five.png", "six.png", "seven.png", "eight.png", "nine.png"};
+		for(String filename: filenames){
+			getDrawing(filename);
+			in.nextLine();
+		}
 	}
 
 	public int getGrayScale(int r, int g, int b) {
@@ -43,11 +44,11 @@ public class Tester {
 		System.out.println(a[a.length - 1] + "]");
 	}
 
-	public void getDrawing() {
+	public void getDrawing(String filename) {
 		BufferedImage img;
 		NN1 nn = new NN1();
 		try {
-			img = ImageIO.read(new File("number.png"));
+			img = ImageIO.read(new File("assets/images/"+filename));
 			int width = img.getWidth();
 			int height = img.getHeight();
 			int[] startPixels = new int[width*height*4];
