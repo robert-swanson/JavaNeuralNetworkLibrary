@@ -64,14 +64,21 @@ public class NN {
 		load("Current.txt");
 	}
 
+	/**
+	 * Constructs a neural network by loading the data from the file specified
+	 */
+	public NN(String filename) { //Test Init
+		load(filename);
+	}
+
 	//  ================================================= Classifying ==============================================
 
 	/**
 	 * Tests the neural network on the provided images
 	 * @param images a list of images to test on
-	 * @return a double[11] whose first value is the overall accuracy and whose following values arr[n] is equal to the accuracy of classifying the digit n-1
+	 * @return a double[2][] whose first value is the overall accuracy and whose second value arr[n] is equal to the accuracy of classifying the digit n-1
 	 */
-	public double[][] testWithImage(LinkedList<Image> images) {
+	public double[][] testWithImages(LinkedList<Image> images) {
 		int[] total = new int[10];
 		int successes = 0;
 		int t = images.size();
@@ -86,7 +93,7 @@ public class NN {
 		}
 		double[] stats = new double[10];
 		for(int i = 0; i < 10; i++) {
-			stats[i] = correct[i]/(double)total[i]*100;
+			stats[i] = correct[i]/(double)total[i];
 		}
 		double d = successes/(double)t;
 		return new double[][]{new double[] {d},stats};
@@ -177,12 +184,12 @@ public class NN {
 	/**
 	 * Trains the current network on all of the training data repeatedly
 	 */
-	public static void infiniteTrain() {
+	public static void infiniteTrain(int batchSize, double learningRate) {
 		LinkedList<Image> images = Image.getTrainingImageList();
 		NN neuralNetwork = new NN();//new int[] {784,36,16,10} new int[] {784,100,60,40,10}
 		while(true) {
 			if(neuralNetwork.trainingCursor == images.size()) neuralNetwork.trainingCursor = 0;
-			neuralNetwork.train(images, 100, .2);
+			neuralNetwork.train(images, batchSize, learningRate);
 		}
 	}
 
@@ -193,10 +200,17 @@ public class NN {
 	 * @param learningRate the speed of the learning process
 	 */
 	public void train(LinkedList<Image> data, int batchSize, double learningRate) {
-		System.out.println("Data Size: "+data.size());
+	    System.out.printf("Training starting at (%d/%d=%.0f%%) with batch size = %d and learning rate = %f\n",trainingCursor,data.size(), (double)trainingCursor/data.size()*100, batchSize, learningRate);
+
 		double seconds = getBackPropTime(data.getFirst())/1000.0;
 		System.out.println("Estimated Completion: "+getETA(seconds*batchSize, (int)Math.ceil((data.size()- trainingCursor)/batchSize)));
-		System.out.println("Estimated Total Time: "+(int)(data.size()*seconds)+"s");
+		int mins = (int)(data.size()*seconds/60);
+		System.out.printf("Estimated Total Time: %dh %dm\n", mins/60, mins%60);
+
+		NN best = new NN("Best.txt");
+		bestAccuracy = testWithImages(Image.getTestImageList())[0][0];
+		System.out.printf("Starting Best Accuracy: %.3f%%\n",bestAccuracy*100);
+
 		long start = System.currentTimeMillis();
 		Image image;
 		for(int i = trainingCursor; i < data.size();) { //Iterates through each batch
@@ -227,10 +241,10 @@ public class NN {
 				weights = sumMatrix(weights, weightVector);
 				biases = sumMatrix(biases, biasVector);
 //				System.out.printf("Batch #%d:\tAccuracy:%3.0f%%\t%2.2f%% Complete\t\tEst Complete: %s\n", i/batchSize, test(Image.getTestImageList())*100.0, (100.0*i)/data.size() ,getETA((System.currentTimeMillis()-batchStart)/1000.0, (int)Math.ceil((data.size()-i)/batchSize)));
-				double[][] results = testWithImage(Image.getTestImageList());
-				System.out.printf("Accuracy: %.3f%% ", results[0][0]*100);
+				double[][] results = testWithImages(Image.getTestImageList());
+				System.out.printf("%2.2f%%: Accuracy: %.3f%% ", (double)trainingCursor/data.size()*100, results[0][0]*100);
 				for(int ii = 0; ii < 10; ii++) {
-					System.out.printf("%d:%.0f%% ",ii, results[1][ii]);
+					System.out.printf("%d:%.0f%% ",ii, results[1][ii]*100);
 				}
 				trainingCursor += batch;
 				save("Current.txt");

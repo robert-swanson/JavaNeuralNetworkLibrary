@@ -1,3 +1,8 @@
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -8,12 +13,15 @@ public class Image {
 	/**
 	 * The pixel values of the image
 	 */
-	int[][] data;
-
+	final int[][] data;
 	/**
 	 * The integer value of the digit shown in the image
 	 */
-	int label;
+	final int label;
+
+	final int finalLength = 28;
+	static LinkedList<Image> trainingImages = new LinkedList<>();
+	static LinkedList<Image> testingImages = new LinkedList<>();
 
 	/**
 	 * Constructs image with 2D data
@@ -38,6 +46,54 @@ public class Image {
 				data[y][x] = imageData[i++];
 		}
 		this.label = label;
+	}
+
+	public Image(String filename, int label) throws Exception {
+		this.label = label;
+		data = new int[finalLength][finalLength];
+		BufferedImage img;
+		try {
+			img = ImageIO.read(new File("assets/images/" + filename));
+			if (img == null) throw new FileNotFoundException();
+		} catch (IOException e) {
+			throw e;
+		}
+
+        if (img.getWidth() != img.getHeight()) {
+			String message = String.format("unable to load file at assets/images/%s: image must be square",filename);
+			throw new Exception(message);
+		}
+
+		// Resize image
+		int length = img.getWidth();
+		int[] rgbPixels = new int[length * length * 4];
+		int[] grayscalePixels = new int[length * length];
+		img.getRaster().getPixels(0, 0, length, length, rgbPixels);
+		for(int i = 0; i < rgbPixels.length; i+=4){
+			grayscalePixels[i/4] = getGrayScale(rgbPixels[i], rgbPixels[i+1], rgbPixels[i+2]);
+		}
+
+		if (length >= finalLength || length < finalLength) { // Making smaller or no change or any case really
+			double multiplier = (double)length/finalLength;
+			for(int finalY = 0; finalY < finalLength; finalY++) {
+				for(int finalX = 0; finalX < finalLength; finalX++) {
+					double pixel = 0.0;
+					int total = 0;
+				    for(int averageY = (int)(finalY*multiplier); (averageY < (int)((finalY+1)*multiplier) && (averageY < length)); averageY++) {
+						for(int averageX = (int)(finalX*multiplier); (averageX < (int)((finalX+1)*multiplier) && (averageX < length)); averageX++) {
+							pixel += grayscalePixels[xyToIndex(averageX, averageY, length)];
+							total++;
+						}
+					}
+					data[finalY][finalX] = (int)(pixel / total);
+				}
+			}
+		}
+
+	}
+
+	private static int xyToIndex(int x, int y, int length){
+		return x + y * length;
 	}
 
 	/**
@@ -100,9 +156,12 @@ public class Image {
 	 * @return a linked list containing the training images
 	 */
 	public static LinkedList<Image> getTrainingImageList(){
-		int[] labels = MnistReader.getLabels("assets/dataset/training labels");
-		List<int[][]> imageData = MnistReader.getImages("training data");
-		return getImageList(labels, imageData);
+		if(trainingImages.isEmpty()) {
+			int[] labels = MnistReader.getLabels("assets/dataset/training labels");
+			List<int[][]> imageData = MnistReader.getImages("assets/dataset/training data");
+			trainingImages = getImageList(labels, imageData);
+		}
+		return trainingImages;
 	}
 
 	/**
@@ -110,9 +169,12 @@ public class Image {
 	 * @return a linked list containing the testing images
 	 */
 	public static LinkedList<Image> getTestImageList(){
-		int[] labels = MnistReader.getLabels("assets/dataset/test labels");
-		List<int[][]> imageData = MnistReader.getImages("assets/dataset/test data");
-		return getImageList(labels, imageData);
+	    if(testingImages.isEmpty()){
+			int[] labels = MnistReader.getLabels("assets/dataset/test labels");
+			List<int[][]> imageData = MnistReader.getImages("assets/dataset/test data");
+			testingImages = getImageList(labels, imageData);
+		}
+	    return testingImages;
 	}
 
 	/**
